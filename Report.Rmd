@@ -1,0 +1,118 @@
+---
+title: "Project 1 Report"
+author: "Anthony Criscione"
+date: "9/26/2020"
+output: html_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Loading and Cleaning the Data
+
+```{r}
+source("CleanData.R")
+```
+
+To read the Netflix data, I changed `type` and `rating` from character to factor since there are a relatively small number of pre-defined categories for each. I also changed the date variables (`date_added` and `release_year`) from character and double (respectively) to dates with the proper formatting. Finally, I changed `duration` from character to number to parse out the digits (movies have durations like "90 min" and shows have durations like "1 Season"). This difference in units could make further analysis difficult, but any comparisons involving duration can likely be grouped by Movies and TV Shows.
+
+Several variables do contain `NA` values. Specifically, `country` contains a total of 476 `NA`s, the `director` column has 1969 `NA` values, `cast` has 570 `NA`s.
+
+While this dataset doesn't seem to contain any particularly "messy" data, it mostly contains character data, many of which are lists of strings in a single entry (names or genres). Therefore, I may need to generate more numerical data by counting these substrings (i.e. counting how many times an individual director appears, or splitting genre lists to count how many movies/shows each genre contains).
+
+
+## The *Netflix Movies and TV Shows* Dataset
+
+(Available on Kaggle.com: https://www.kaggle.com/shivamb/netflix-shows)
+
+This dataset consists of movies and TV shows available on Netflix as of 2019. There are 12 columns/variables: show_id, type, title, director, cast, country, date_added, release_year, rating, duration, listed_in, and description. The dataset contains 6,234 observations (rows). According to the dataset's description, it was collected from Flixable, a third-party Netflix search engine.
+
+Some suggested uses for the dataset include understanding content availability in different countries, and focus on TV shows compared to movies. The `listed_in` variable, which refers to the genre/category in which the movie or show was listed on Netflix, provides a range of different analyses which could be made, such as which genre is most popular by country or which actors/directors frequent which genres.
+
+
+## Exploratory Data Analysis
+
+For reference: This dataset consist of a total of 4,265 movies and 1,969 TV Shows.
+```{r}
+netflix %>%
+  group_by(type) %>%
+  count()
+```
+
+
+### Individual Variables
+
+**Duration**
+
+While the most common movie length is 90 minutes (a reasonably expected value), the most common TV Show duration by far is only 1 season. There are 1,321 shows (a majority of the total 1,969) which last only 1 season, compared to just 304 shows with 2 seasons. This is quite an interesting and unexpected outlier; I would have figured at least 2 or 3 seasons would be more common.
+
+```{r}
+netflix %>%
+  group_by(type) %>%
+  count(duration) %>%
+  filter(n > 100) %>%
+  arrange(desc(n))
+```
+
+A bar chart further reveals this quick decrease in seasons, but also shows a small number of shows that make it at least to 10 seasons!
+    
+```{r}
+netflix %>%
+  filter(type == "TV Show") %>%
+  ggplot(aes(duration)) +
+  geom_histogram(binwidth = 1)
+```
+
+Unsurprisingly, most of these shows are vastly popular and existed before Netflix, and have had the size of audience (global and not niche) which are required for renewal of this many seasons. This really helps illustrate that if a show does not have a large enough audience, the show will not survive; even if those who do watch the show do so devoutly.
+
+```{r}
+netflix %>%
+  filter(type == "TV Show", duration > 9) %>%
+  select(title, duration)
+```
+
+Movies had some unexpected lengths as well. Specifically, there were some which were less than 20 minutes in length; hardly long enough to even be called a movie.
+
+```{r}
+netflix %>%
+  filter(type == "Movie", duration < 20) %>%
+  select(title, duration, listed_in, description) %>%
+  arrange(duration)
+```
+
+Further analysis of the descriptions revealed that some of them were simply short films, and some were "making-of" or otherwise extra content.
+
+
+**Distribution In/Out of US**
+
+For a categorical variable, I chose to show the distribution of content by country, but because these are mostly lists of countries to grep through as substrings, I had to pick one. It therefore made sense to group them by US content and Non-US content. This was a bit of an interesting result, because the US has roughly 2/3 as much content as all the rest of the countries represented on Netflix combined. This could make sense if we assume the US is one of Netflix's biggest consumers, but this was still a bit staggering to see. This distribution also leads well into my covariation analysis next, in which I will explore content type by country.
+
+```{r}
+netflix %>%
+  mutate(US_Content = grepl("United States", country)) %>%
+  count(US_Content)
+```
+
+
+### Covariation
+
+**Content Type by Country**
+
+For covariation, I chose to explore the distribution of content type by country. Same as before, I had to restrict this to US and Non-US content, but it is still interesting to see which content types the rest of the world prefers compared to the US. Specifically, the US has almost as many movies as the rest of the world (within roughly 300 movies), but only half as many TV shows as the rest of the world. This gives the rest of the world a show-to-movie ratio of about 1:2, while the US is roughly 1:3. This could imply that the US values movies more than TV shows compared to the rest of the world, but there could be other reasons as well that we can't see here.
+
+```{r}
+netflix %>%
+  mutate(US_Content = grepl("United States", country)) %>%
+  ggplot(aes(type, fill = US_Content)) +
+  geom_bar(position = "dodge") +
+  labs(title = "Distribution of Type In & Out of US",
+       x = "Type", y = "Count")
+```
+
+
+## Conclusion
+
+This project was an interesting introduction to exploratory data analysis and data science in general, and provided some interesting insights to the Netflix dataset and what types of content Netflix maintains. It was especially interesting to see how the US compares to the rest of the world in content amounts and types, and I certainly didn't expect for shows with only 1 season to be so heavily dominant.
+
+I definitely feel that this is just scratching the surface, as there are many more things I'd like to explore once we cover more dynamic methods. A lot of my data consists of comma-separated lists within a single entry, and I'd really like to be able to parse through these so I can generate an actual distribution by actor, or country, or genre. Additionally, I would love to pull in data from IMDB or RottenTomatoes, so that I can look at things like ratings alongside these current variables. Nonetheless, this was a fun start.
