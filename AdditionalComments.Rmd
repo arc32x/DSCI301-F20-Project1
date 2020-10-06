@@ -1,0 +1,37 @@
+---
+title: "Additional Comments"
+author: "John W. Hoggard"
+date: "10/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo = F, message = F}
+source("CleanData.R")
+```
+
+It might be interesting to look at say, the top types by the most common countries in the data set.  Many countries actually have a smallish sample:
+
+```{r}
+count(netflix, country) %>% 
+  filter(n > 80) %>% 
+  arrange(desc(n))
+```
+
+```{r}
+netflix %>%
+  filter(! is.na(country)) %>%      # drop those NAs
+  group_by(country) %>%
+  filter(n() > 80) %>%              # get the common countries
+  ungroup() %>%
+  ggplot() + 
+    geom_bar(aes(x = type), position="dodge") + 
+    facet_wrap(~country)
+```
+
+We can see some like South Korea and Japan where the TV is a little higher.
+
+
